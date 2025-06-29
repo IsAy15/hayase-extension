@@ -1,9 +1,19 @@
 import AbstractSource from "./abstract.js";
 
-export default new (class TsundereRaws extends AbstractSource {
-  url = atob(
+function getTsundereUrl() {
+  // URL d'origine encodée
+  const origin = atob("aHR0cHM6Ly90c3VuZGVyZS5hbmltZXZvc3QuZnIvanNvbi9ueWFh");
+  // URL proxy encodée
+  const proxy = atob(
     "aHR0cHM6Ly9jb3JzcHJveHkuaW8vP3VybD1odHRwcyUzQSUyRiUyRnRzdW5kZXJlLmFuaW1ldm9zdC5mciUyRmpzb24lMkZueWFh"
   );
+  // Si on est dans un navigateur, utilise le proxy, sinon l'URL d'origine
+  if (typeof window !== "undefined" && window.fetch) return proxy;
+  return origin;
+}
+
+export default new (class TsundereRaws extends AbstractSource {
+  url = getTsundereUrl();
 
   /**
    * @param {any[]} entries

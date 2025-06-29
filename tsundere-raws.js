@@ -43,8 +43,17 @@ export default new (class TsundereRaws extends AbstractSource {
 
   /** @type {import('./').SearchFunction} */
   async single({ malId, titles, resolution, episode, season }) {
-    const res = await fetch(this.url);
-    const data = await res.json();
+    console.log("[tsundere-raws] URL utilisée pour fetch:", this.url);
+    let res, data;
+    try {
+      res = await fetch(this.url);
+      data = await res.json();
+    } catch (e) {
+      console.error("[tsundere-raws] Erreur fetch:", e);
+      throw new Error(
+        "Erreur réseau ou CORS lors de la récupération des données Tsundere-Raws."
+      );
+    }
     let filtered = data.items;
     if (malId) filtered = filtered.filter((e) => e.malId == malId);
     if (titles?.length)
@@ -74,7 +83,12 @@ export default new (class TsundereRaws extends AbstractSource {
   }
 
   async test() {
-    const res = await fetch(this.url);
-    return res.ok;
+    try {
+      const res = await fetch(this.url);
+      return res.ok;
+    } catch (e) {
+      console.error("[tsundere-raws] Erreur fetch test:", e);
+      return false;
+    }
   }
 })();

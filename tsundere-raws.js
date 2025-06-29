@@ -1,7 +1,7 @@
 import AbstractSource from "./abstract.js";
 
 export default new (class TsundereRaws extends AbstractSource {
-  url = "https://tsundere.animevost.fr/json/nyaa";
+  url = atob("aHR0cHM6Ly90c3VuZGVyZS5hbmltZXZvc3QuZnIvanNvbi9ueWFh");
 
   /**
    * @param {any[]} entries

@@ -47,7 +47,7 @@
     "ratio": 0,
     "media": "sub",
     "languages": ["FR"],
-    "icon": "https://tsundere.animevost.fr/favicon.ico",
+    "icon": "https://releases.moe/favicon.png",
     "update": "gh:IsAy15/hayase-extension",
     "code": "gh:IsAy15/hayase-extension/tsundere-raws"
   }

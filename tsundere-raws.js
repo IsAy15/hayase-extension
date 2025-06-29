@@ -7,9 +7,15 @@ function getTsundereUrl() {
   const proxy = atob(
     "aHR0cHM6Ly9jb3JzcHJveHkuaW8vP3VybD1odHRwcyUzQSUyRiUyRnRzdW5kZXJlLmFuaW1ldm9zdC5mciUyRmpzb24lMkZueWFh"
   );
-  // Si on est dans un navigateur, utilise le proxy, sinon l'URL d'origine
-  if (typeof window !== "undefined" && window.fetch) return proxy;
-  return origin;
+  // Si on est dans Node.js, utilise l'URL d'origine, sinon toujours le proxy
+  if (
+    typeof process !== "undefined" &&
+    process.versions &&
+    process.versions.node
+  ) {
+    return origin;
+  }
+  return proxy;
 }
 
 export default new (class TsundereRaws extends AbstractSource {

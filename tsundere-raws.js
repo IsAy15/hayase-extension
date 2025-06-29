@@ -1,7 +1,9 @@
 import AbstractSource from "./abstract.js";
 
 export default new (class TsundereRaws extends AbstractSource {
-  url = atob("aHR0cHM6Ly90c3VuZGVyZS5hbmltZXZvc3QuZnIvanNvbi9ueWFh");
+  url = atob(
+    "aHR0cHM6Ly9jb3JzcHJveHkuaW8vP3VybD1odHRwcyUzQSUyRiUyRnRzdW5kZXJlLmFuaW1ldm9zdC5mciUyRmpzb24lMkZueWFh"
+  );
 
   /**
    * @param {any[]} entries

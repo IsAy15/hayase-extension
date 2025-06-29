@@ -48,7 +48,7 @@
     "media": "sub",
     "languages": ["FR"],
     "icon": "https://tsundere.animevost.fr/favicon.ico",
-    "update": "gh:hayase-app/extensions",
-    "code": "gh:hayase-app/extensions/tsundere-raws"
+    "update": "gh:IsAy15/hayase-extension",
+    "code": "gh:IsAy15/hayase-extension/tsundere-raws"
   }
 ]

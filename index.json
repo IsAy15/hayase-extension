@@ -2,13 +2,13 @@
   {
     "name": "Tsundere-Raws",
     "id": "tsundere-raws",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "type": "torrent",
     "accuracy": "medium",
     "ratio": 0,
     "media": "sub",
     "languages": ["FR"],
-    "icon": "https://releases.moe/favicon.png",
+    "icon": "https://cdn.discordapp.com/icons/1275962978717667389/a_240855e1c820f9f4accaf01ad3d593b0.png",
     "update": "gh:IsAy15/hayase-extension",
     "code": "gh:IsAy15/hayase-extension/tsundere-raws"
   }

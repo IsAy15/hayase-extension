@@ -11,5 +11,25 @@
     "icon": "https://cdn.discordapp.com/icons/1275962978717667389/a_240855e1c820f9f4accaf01ad3d593b0.png",
     "update": "https://raw.githubusercontent.com/IsAy15/hayase-extension/refs/heads/main/index.json",
     "code": "https://raw.githubusercontent.com/IsAy15/hayase-extension/refs/heads/main/tsundere-raws.js"
+  },
+  {
+    "name": "AnimeTosho MultiSub",
+    "id": "animetosho-multi",
+    "version": "0.0.7",
+    "type": "torrent",
+    "accuracy": "high",
+    "ratio": 0,
+    "media": "sub",
+    "languages": ["ALL"],
+    "icon": "https://animetosho.org/inc/favicon.ico",
+    "update": "https://raw.githubusercontent.com/IsAy15/hayase-extension/refs/heads/main/index.json",
+    "code": "https://raw.githubusercontent.com/IsAy15/hayase-extension/refs/heads/main/animetosho.js",
+    "options": {
+      "useTorrent": {
+        "type": "boolean",
+        "description": "Use .torrent files instead of magnet links, this can cause issues with some internet providers if they block some domains",
+        "default": false
+      }
+    }
   }
 ]

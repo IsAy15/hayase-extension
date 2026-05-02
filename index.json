@@ -6,7 +6,7 @@
     "type": "torrent",
     "accuracy": "medium",
     "ratio": 0,
-    "media": "sub",
+    "media": "both",
     "languages": ["FR"],
     "icon": "https://cdn.discordapp.com/icons/1275962978717667389/a_240855e1c820f9f4accaf01ad3d593b0.png",
     "update": "gh:IsAy15/hayase-extension",

@@ -1,17 +1,78 @@
 const RESOLUTIONS = ["1080", "720", "540", "480"];
 
 export default new (class {
-  url = atob(
-    "aHR0cHM6Ly9jb3JzcHJveHkuaW8vP3VybD1odHRwcyUzQSUyRiUyRnRzdW5kZXJlLmFuaW1ldm9zdC5mciUyRmpzb24lMkZueWFh"
-  );
-
-  animeApiBase = "https://corsproxy.io/?https://animeapi.my.id/aniDB/";
+  url = atob("aHR0cHM6Ly9ueWFhLnNpLz9wYWdlPXJzcz91PVRzdW5kZXJlLVJhd3M=");
 
   #normalizeResolution(value) {
     if (!value) return "";
     return String(value)
       .toLowerCase()
       .replace(/[^0-9]/g, "");
+  }
+
+  #normalizeText(value) {
+    return String(value || "").toLowerCase();
+  }
+
+  #getTagText(node, tagName) {
+    return (
+      node.getElementsByTagNameNS("*", tagName)[0]?.textContent?.trim() || ""
+    );
+  }
+
+  #parseSize(sizeText) {
+    const match = String(sizeText || "")
+      .trim()
+      .match(/^([\d.]+)\s*(B|KiB|MiB|GiB|TiB)$/i);
+    if (!match) return 0;
+
+    const value = Number(match[1]);
+    if (!Number.isFinite(value)) return 0;
+
+    const unit = match[2].toLowerCase();
+    const factors = {
+      b: 1,
+      kib: 1024,
+      mib: 1024 ** 2,
+      gib: 1024 ** 3,
+      tib: 1024 ** 4,
+    };
+
+    return Math.round(value * (factors[unit] || 1));
+  }
+
+  #parseItemsFromXml(xmlText) {
+    const document = new DOMParser().parseFromString(
+      xmlText,
+      "application/xml",
+    );
+    if (document.querySelector("parsererror")) {
+      throw new Error("Failed to parse Tsundere-Raws RSS feed");
+    }
+
+    return [...document.getElementsByTagName("item")].map((node) => {
+      const title = this.#getTagText(node, "title");
+      const link = this.#getTagText(node, "link");
+      const guid = this.#getTagText(node, "guid");
+      const description = this.#getTagText(node, "description");
+      const sizeText = this.#getTagText(node, "size");
+      const pubDateText = this.#getTagText(node, "pubDate");
+      const infoHash = this.#getTagText(node, "infoHash");
+
+      return {
+        title,
+        link,
+        guid,
+        seeders: Number(this.#getTagText(node, "seeders")) || 0,
+        leechers: Number(this.#getTagText(node, "leechers")) || 0,
+        downloads: Number(this.#getTagText(node, "downloads")) || 0,
+        hash: infoHash || "",
+        size: this.#parseSize(sizeText),
+        accuracy: "medium",
+        date: pubDateText ? new Date(pubDateText) : new Date(0),
+        description,
+      };
+    });
   }
 
   #filterItems(items, { resolution, exclusions } = {}) {
@@ -23,70 +84,84 @@ export default new (class {
         const fromField = this.#normalizeResolution(item.resolution);
         if (fromField) return fromField === wanted;
 
-        const haystack =
-          (item.title || "") +
-          " " +
-          (item.filename || "") +
-          " " +
-          (item.scene_filename || "");
+        const haystack = `${item.title || ""} ${item.link || ""} ${item.description || ""}`;
         const match = haystack.match(/(\d{3,4})p/i);
         if (!match) return false;
-        const found = this.#normalizeResolution(match[1]);
-        return found === wanted;
+
+        return this.#normalizeResolution(match[1]) === wanted;
       });
     }
 
     if (exclusions?.length) {
-      const ex = exclusions.map((s) => s.toLowerCase());
+      const terms = exclusions.map((value) => this.#normalizeText(value));
       results = results.filter((item) => {
-        const haystack = (
-          (item.title || "") +
-          " " +
-          (item.filename || "") +
-          " " +
-          (item.alt_name || "")
-        ).toLowerCase();
-
-        return !ex.some((term) => haystack.includes(term));
+        const haystack = this.#normalizeText(
+          `${item.title || ""} ${item.link || ""} ${item.description || ""}`,
+        );
+        return !terms.some((term) => haystack.includes(term));
       });
     }
 
     return results;
   }
 
-  async #getMalIdFromAnidb(anidbId) {
-    const id = String(anidbId).trim();
-    if (!id) return null;
+  #matchesAnyTitle(item, titles = []) {
+    if (!titles.length) return false;
 
-    const res = await fetch(this.animeApiBase + encodeURIComponent(id));
-    if (!res.ok) {
-      console.warn(
-        `AnimeAPI request failed for AniDB ID ${id}: ${res.status} ${res.statusText}`
-      );
-      return null;
+    const haystack = this.#normalizeText(
+      `${item.title || ""} ${item.description || ""} ${item.guid || ""}`,
+    );
+
+    return titles.some((title) => {
+      const normalized = this.#normalizeText(title).trim();
+      return normalized && haystack.includes(normalized);
+    });
+  }
+
+  #matchesEpisode(item, episode) {
+    const wanted = String(episode).padStart(2, "0");
+    const haystack = `${item.title || ""} ${item.description || ""}`;
+    const patterns = [
+      /\bS\d{1,2}E(\d{1,3})\b/i,
+      /\bE(?:P|pisode)?\s*(\d{1,3})\b/i,
+      /\b(?:EP|Episode)\s*(\d{1,3})\b/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = haystack.match(pattern);
+      if (match && String(match[1]).padStart(2, "0") === wanted) {
+        return true;
+      }
     }
 
-    const data = await res.json();
-    const malId = data.myanimelist;
-    if (!malId && malId !== 0) return null;
+    return false;
+  }
 
-    return String(malId);
+  #isBatchLike(item) {
+    const haystack = this.#normalizeText(
+      `${item.title || ""} ${item.description || ""}`,
+    );
+    return haystack.includes("batch") || haystack.includes("complete");
   }
 
   async raw() {
     const res = await fetch(this.url);
     if (!res.ok) {
-      throw new Error(
-        `Failed to fetch Tsundere-Raws JSON feed (${res.status})`
-      );
+      throw new Error(`Failed to fetch Tsundere-Raws RSS feed (${res.status})`);
     }
-    return res.json();
+
+    const xmlText = await res.text();
+    return {
+      items: this.#parseItemsFromXml(xmlText),
+    };
   }
 
   async feed({ resolution, exclusions } = {}) {
     const data = await this.raw();
-    const items = Array.isArray(data.items) ? data.items : [];
-    const filteredItems = this.#filterItems(items, { resolution, exclusions });
+    const filteredItems = this.#filterItems(data.items, {
+      resolution,
+      exclusions,
+    });
 
     return {
       ...data,
@@ -94,110 +169,51 @@ export default new (class {
     };
   }
 
-  /**
-   * SINGLE ÉPISODE
-   * ----------------
-   * On part de :
-   *  - anidbAid (anime id AniDB)
-   *  - episode (numéro d’épisode)
-   *
-   * 1) AniDB anime id -> MAL id via AnimeAPI
-   * 2) Filtre Tsundere sur malId
-   * 3) Filtre Tsundere sur episode_number (ou déduit du titre/filename)
-   */
-  async single({ anidbAid, episode, resolution, exclusions } = {}) {
-    if (!anidbAid) throw new Error("No anidbAid provided for single()");
-    if (!episode && episode !== 0)
+  async single({ titles = [], episode, resolution, exclusions } = {}) {
+    if (!episode && episode !== 0) {
       throw new Error("No episode number provided for single()");
+    }
 
-    const malId = await this.#getMalIdFromAnidb(anidbAid);
-    if (!malId) {
-      console.warn(`No MAL ID found for AniDB ID ${anidbAid}`);
+    if (!titles.length) {
       return [];
     }
 
     const data = await this.raw();
-    const items = Array.isArray(data.items) ? data.items : [];
-
-    // 1) Anime-level filter (MAL id)
-    const byMalId = items.filter(
-      (item) => String(item.malId || "").trim() === malId
+    const items = data.items.filter((item) =>
+      this.#matchesAnyTitle(item, titles),
+    );
+    const byEpisode = items.filter((item) =>
+      this.#matchesEpisode(item, episode),
     );
 
-    // 2) Episode-level filter
-    const wantedEp = String(episode).padStart(2, "0");
-
-    const byEpisode = byMalId.filter((item) => {
-      // Si l’API Tsundere fournit episode_number, on l’utilise
-      if (item.episode_number != null) {
-        const epField = String(item.episode_number).padStart(2, "0");
-        return epField === wantedEp;
-      }
-
-      // Sinon, fallback : on essaie de parser depuis title / filename
-      const haystack =
-        (item.title || "") +
-        " " +
-        (item.filename || "") +
-        " " +
-        (item.scene_filename || "");
-
-      // Très basique : récupère un nombre 1–3 chiffres
-      const match = haystack.match(/\b(?:EP|E|Episode)?\s*(\d{1,3})\b/i);
-      if (!match) return false;
-      const parsed = String(match[1]).padStart(2, "0");
-      return parsed === wantedEp;
-    });
-
-    // 3) Appliquer résolution / exclusions
     return this.#filterItems(byEpisode, { resolution, exclusions });
   }
 
-  async batch({ anidbAid, resolution, exclusions } = {}) {
-    if (!anidbAid) throw new Error("No anidbAid provided");
-
-    const malId = await this.#getMalIdFromAnidb(anidbAid);
-    if (!malId) {
-      console.warn(`No MAL ID found for AniDB ID ${anidbAid}`);
+  async batch({ titles = [], resolution, exclusions } = {}) {
+    if (!titles.length) {
       return [];
     }
 
     const data = await this.raw();
-    const items = Array.isArray(data.items) ? data.items : [];
-
-    const byMalId = items.filter(
-      (item) => String(item.malId || "").trim() === malId
+    const items = data.items.filter((item) =>
+      this.#matchesAnyTitle(item, titles),
     );
-
-    const batchLike = byMalId.filter((item) => {
-      const txt = (
-        (item.title || "") +
-        " " +
-        (item.filename || "")
-      ).toLowerCase();
-      return txt.includes("batch");
-    });
+    const batchLike = items.filter((item) => this.#isBatchLike(item));
 
     return this.#filterItems(batchLike, { resolution, exclusions });
   }
 
-  async movie({ anidbAid, resolution, exclusions } = {}) {
-    if (!anidbAid) throw new Error("No anidbAid provided");
-
-    const malId = await this.#getMalIdFromAnidb(anidbAid);
-    if (!malId) {
-      console.warn(`No MAL ID found for AniDB ID ${anidbAid}`);
+  async movie({ titles = [], resolution, exclusions } = {}) {
+    if (!titles.length) {
       return [];
     }
 
     const data = await this.raw();
-    const items = Array.isArray(data.items) ? data.items : [];
-
-    const byMalId = items.filter(
-      (item) => String(item.malId || "").trim() === malId
+    const items = data.items.filter((item) =>
+      this.#matchesAnyTitle(item, titles),
     );
 
-    return this.#filterItems(byMalId, { resolution, exclusions });
+    return this.#filterItems(items, { resolution, exclusions });
   }
 
   async test() {
